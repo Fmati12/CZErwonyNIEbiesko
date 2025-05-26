@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Czerwony i Niebieski - Gra</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; text-align: center; }
+  h1 { margin-bottom: 10px; }
+  #kwadrat { width: 200px; height: 200px; margin: 20px auto; border: 2px solid #000; }
+  button { font-size: 18px; margin: 10px; padding: 10px 20px; cursor: pointer; }
+  input { font-size: 16px; width: 70px; padding: 4px; margin-left: 8px; }
+  label { font-size: 16px; display: block; margin: 10px 0; }
+  textarea { width: 90%; height: 200px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h1>Czerwony 🟥 Niebieski 🟦</h1>
+
+<div id="menu">
+  <button onclick="pokazFormularz()">Start</button>
+  <button onclick="pokazWyniki()">Zapisane wyniki</button>
+  <button onclick="pokazInfo()">Informacje</button>
+</div>
+
+<div id="formularz" style="display:none;">
+  <h2>Ustawienia testu</h2>
+  <label>Czas między zmianami (sekundy): <input id="czas" type="number" step="0.1" min="0.1" value="1"/></label>
+  <label>Liczba czerwonych kwadratów: <input id="czerwone" type="number" min="0" value="3"/></label>
+  <label>Liczba niebieskich kwadratów: <input id="niebieskie" type="number" min="0" value="3"/></label>
+  <button onclick="rozpocznij()">Rozpocznij</button>
+  <button onclick="powrotDoMenu()">Powrót do menu</button>
+</div>
+
+<div id="test" style="display:none;">
+  <div id="kwadrat"></div>
+  <button onclick="stopTest()">🛑 STOP</button>
+</div>
+
+<div id="wyniki" style="display:none;">
+  <h2>Zapisane wyniki</h2>
+  <textarea id="wynikiTekst" readonly></textarea><br/>
+  <button onclick="powrotDoMenu()">Powrót do menu</button>
+</div>
+
+<div id="info" style="display:none; max-width: 500px; margin: 0 auto; text-align: left;">
+  <h2>Informacje o programie</h2>
+  <pre>
+Wersja programu: 3.1
+Autor: Mateusz Felkel
+Wydanie: 2025.05.26, wydanie nr 4
+Technologia: HTML5, JavaScript
+Przeglądarka: Wersja zależna od użytkownika
+  </pre>
+  <button onclick="powrotDoMenu()">Powrót do menu</button>
+</div>
+
+<script>
+let kolory = [];
+let index = 0;
+let czas = 1000;
+let timerId = null;
+
+function pokazFormularz() {
+  ukryjWszystko();
+  document.getElementById('formularz').style.display = 'block';
+}
+
+function powrotDoMenu() {
+  stopTest();
+  ukryjWszystko();
+  document.getElementById('menu').style.display = 'block';
+}
+
+function ukryjWszystko() {
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('formularz').style.display = 'none';
+  document.getElementById('test').style.display = 'none';
+  document.getElementById('wyniki').style.display = 'none';
+  document.getElementById('info').style.display = 'none';
+}
+
+function rozpocznij() {
+  const czasInput = parseFloat(document.getElementById('czas').value);
+  const czerwone = parseInt(document.getElementById('czerwone').value);
+  const niebieskie = parseInt(document.getElementById('niebieskie').value);
+
+  if (isNaN(czasInput) || isNaN(czerwone) || isNaN(niebieskie) || czasInput <= 0 || czerwone < 0 || niebieskie < 0) {
+    alert('Wprowadź poprawne, nieujemne liczby (czas > 0)!');
+    return;
+  }
+
+  czas = czasInput * 1000;
+  kolory = Array(czerwone).fill('red').concat(Array(niebieskie).fill('blue'));
+  kolory = kolory.sort(() => Math.random() - 0.5);
+  index = 0;
+
+  ukryjWszystko();
+  document.getElementById('test').style.display = 'block';
+  pokazKwadrat();
+}
+
+function pokazKwadrat() {
+  if (index >= kolory.length) {
+    zakonczTest();
+    return;
+  }
+  const kwadrat = document.getElementById('kwadrat');
+  kwadrat.style.backgroundColor = kolory[index];
+  zagrajDzwiek();
+  index++;
+  timerId = setTimeout(pokazKwadrat, czas);
+}
+
+function stopTest() {
+  if (timerId) {
+    clearTimeout(timerId);
+    timerId = null;
+  }
+  const kwadrat = document.getElementById('kwadrat');
+  kwadrat.style.backgroundColor = 'transparent';
+}
+
+function zakonczTest() {
+  stopTest();
+  const bledy = prompt("Ile popełniono błędów?", "0");
+  if (bledy === null) {
+    powrotDoMenu();
+    return;
+  }
+
+  const data = new Date().toLocaleString();
+  const wynik = `${data} | Czas: ${czas/1000}s | Wszystkich: ${kolory.length} | Czerwone: ${kolory.filter(c => c === 'red').length} | Niebieskie: ${kolory.filter(c => c === 'blue').length} | Błędy: ${bledy}\n`;
+
+  let wyniki = localStorage.getItem('wyniki') || '';
+  wyniki += wynik;
+  localStorage.setItem('wyniki', wyniki);
+  alert('Wynik został zapisany!');
+  powrotDoMenu();
+}
+
+function pokazWyniki() {
+  ukryjWszystko();
+  document.getElementById('wyniki').style.display = 'block';
+
+  const wynikiTekst = localStorage.getItem('wyniki');
+  document.getElementById('wynikiTekst').value = wynikiTekst || 'Brak zapisanych wyników.';
+}
+
+function pokazInfo() {
+  ukryjWszystko();
+  document.getElementById('info').style.display = 'block';
+}
+
+function zagrajDzwiek() {
+  // Prosty beep z Web Audio API
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+    oscillator.connect(audioCtx.destination);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.15);
+  } catch (e) {
+    // fallback (np. nic nie robi)
+    console.log('Dźwięk niedostępny:', e);
+  }
+}
+</script>
+
+</body>
+</html>
+
